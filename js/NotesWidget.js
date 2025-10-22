@@ -52,18 +52,30 @@ export class NotesWidget extends UIComponent {
     addNote() {
         this.notes.push('');
         this.updateUI();
+        
+        if (typeof this.onStateChange === 'function') {
+            this.onStateChange();
+        }
     }
 
     deleteNote(index) {
         if (this.notes.length > 1) {
             this.notes.splice(index, 1);
             this.updateUI();
+            
+            if (typeof this.onStateChange === 'function') {
+                this.onStateChange();
+            }
         }
     }
 
     saveNotes() {
         const textareas = this.element.querySelectorAll('.note-textarea');
         this.notes = Array.from(textareas).map(textarea => textarea.value);
+        
+        if (typeof this.onStateChange === 'function') {
+            this.onStateChange();
+        }
     }
 
     updateUI() {

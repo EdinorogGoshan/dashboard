@@ -48,12 +48,7 @@ export class UIComponent {
     toggleMinimize() {
         this.isMinimized = !this.isMinimized;
         const content = this.element.querySelector('.widget-content');
-        
-        if (this.isMinimized) {
-            content.style.display = 'none';
-        } else {
-            content.style.display = 'block';
-        }
+        content.style.display = this.isMinimized ? 'none' : 'block';
     }
 
     destroy() {
@@ -61,5 +56,9 @@ export class UIComponent {
             this.element.parentNode.removeChild(this.element);
         }
         this.element = null;
+        
+        if (typeof this.onDestroy === 'function') {
+            this.onDestroy(this.id);
+        }
     }
 }

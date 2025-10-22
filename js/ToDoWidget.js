@@ -70,12 +70,20 @@ export class ToDoWidget extends UIComponent {
             this.tasks.push(newTask);
             this.updateUI();
             inputField.value = '';
+            
+            if (typeof this.onStateChange === 'function') {
+                this.onStateChange();
+            }
         }
     }
 
     deleteTask(id) {
         this.tasks = this.tasks.filter(task => task.id !== id);
         this.updateUI();
+        
+        if (typeof this.onStateChange === 'function') {
+            this.onStateChange();
+        }
     }
 
     toggleTask(id) {
@@ -83,6 +91,10 @@ export class ToDoWidget extends UIComponent {
         if (task) {
             task.completed = !task.completed;
             this.updateUI();
+            
+            if (typeof this.onStateChange === 'function') {
+                this.onStateChange();
+            }
         }
     }
 

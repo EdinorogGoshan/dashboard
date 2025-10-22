@@ -2,14 +2,18 @@ import { ToDoWidget } from './ToDoWidget.js';
 import { QuoteWidget } from './QuoteWidget.js';
 import { WeatherWidget } from './WeatherWidget.js';
 import { NotesWidget } from './NotesWidget.js';
+import { CurrencyWidget } from './CurrencyWidget.js';
 
 export class Dashboard {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.widgets = [];
+        this.isInitialized = false;
     }
 
     addWidget(widgetType, config = {}) {
+        console.log(`Добавляем виджет типа: ${widgetType}`);
+        
         let widget;
         
         switch (widgetType) {
@@ -18,8 +22,6 @@ export class Dashboard {
                 break;
             case 'quote':
                 widget = new QuoteWidget(config);
-                // Автоматически загружаем цитату при создании виджета
-                setTimeout(() => widget.fetchQuote(), 100);
                 break;
             case 'weather':
                 widget = new WeatherWidget(config);
@@ -27,57 +29,61 @@ export class Dashboard {
             case 'notes':
                 widget = new NotesWidget(config);
                 break;
+            case 'currency':
+                widget = new CurrencyWidget(config);
+                break;
             default:
                 console.error('Неизвестный тип виджета:', widgetType);
                 return;
         }
         
+        widget.onDestroy = (widgetId) => this.handleWidgetDestroy(widgetId);
+        widget.onStateChange = () => this.saveToLocalStorage();
+        
         this.widgets.push(widget);
         this.container.appendChild(widget.render());
         
-        // Сохраняем состояние в localStorage
-        this.saveToLocalStorage();
+        if (this.isInitialized) {
+            this.saveToLocalStorage();
+        }
         
         return widget;
     }
 
-    removeWidget(widgetId) {
-        const widgetIndex = this.widgets.findIndex(w => w.id === widgetId);
+    handleWidgetDestroy(widgetId) {
+        console.log(`Удаляем виджет: ${widgetId}`);
         
+        const widgetIndex = this.widgets.findIndex(w => w.id === widgetId);
         if (widgetIndex !== -1) {
-            const widget = this.widgets[widgetIndex];
-            widget.destroy();
             this.widgets.splice(widgetIndex, 1);
-            
-            // Сохраняем состояние в localStorage
             this.saveToLocalStorage();
         }
     }
 
     saveToLocalStorage() {
-        const dashboardState = this.widgets.map(widget => ({
-            type: widget.type,
-            id: widget.id,
-            title: widget.title,
-            data: this.getWidgetData(widget)
-        }));
-        
-        localStorage.setItem('dashboardState', JSON.stringify(dashboardState));
+        try {
+            const dashboardState = this.widgets.map(widget => ({
+                type: widget.type,
+                id: widget.id,
+                title: widget.title,
+                data: this.getWidgetData(widget)
+            }));
+            
+            localStorage.setItem('dashboardState', JSON.stringify(dashboardState));
+            console.log('Сохранено виджетов:', this.widgets.length);
+        } catch (error) {
+            console.error('Ошибка при сохранении:', error);
+        }
     }
 
     loadFromLocalStorage() {
-        const savedState = localStorage.getItem('dashboardState');
-        
-        if (savedState) {
-            try {
+        try {
+            const savedState = localStorage.getItem('dashboardState');
+            
+            if (savedState) {
                 const widgetsState = JSON.parse(savedState);
+                console.log('Загружаем сохраненные виджеты:', widgetsState.length);
                 
-                // Очищаем текущие виджеты
-                this.widgets.forEach(widget => widget.destroy());
-                this.widgets = [];
-                this.container.innerHTML = '';
-                
-                // Восстанавливаем виджеты из сохраненного состояния
                 widgetsState.forEach(widgetState => {
                     this.addWidget(widgetState.type, {
                         id: widgetState.id,
@@ -85,27 +91,42 @@ export class Dashboard {
                         ...widgetState.data
                     });
                 });
-            } catch (error) {
-                console.error('Ошибка при загрузке состояния:', error);
             }
+            
+            this.isInitialized = true;
+            
+        } catch (error) {
+            console.error('Ошибка при загрузке:', error);
+            localStorage.removeItem('dashboardState');
+            this.isInitialized = true;
         }
     }
 
     getWidgetData(widget) {
         switch (widget.type) {
             case 'todo':
-                return { tasks: widget.tasks };
+                return { tasks: widget.tasks || [] };
             case 'quote':
-                return { 
-                    initialQuote: widget.currentQuote,
-                    author: widget.author
-                };
+                return { initialIndex: widget.currentQuoteIndex || 0 };
             case 'weather':
-                return { city: widget.city };
+                return { weatherData: widget.weatherData || null };
             case 'notes':
-                return { notes: widget.notes };
+                return { notes: widget.notes || [''] };
+            case 'currency':
+                return { rates: widget.rates || {} };
             default:
                 return {};
         }
+    }
+
+    clearAll() {
+        this.widgets.forEach(widget => {
+            if (widget.element && widget.element.parentNode) {
+                widget.element.parentNode.removeChild(widget.element);
+            }
+        });
+        this.widgets = [];
+        localStorage.removeItem('dashboardState');
+        console.log('Все данные очищены');
     }
 }

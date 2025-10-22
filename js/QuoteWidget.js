@@ -1,4 +1,6 @@
-class QuoteWidget extends UIComponent {
+import { UIComponent } from './UIComponent.js';
+
+export class QuoteWidget extends UIComponent {
     constructor(config = {}) {
         super({
             ...config,
@@ -26,32 +28,20 @@ class QuoteWidget extends UIComponent {
             {
                 text: "Сложнее всего начать действовать, все остальное зависит только от упорства.",
                 author: "Амелия Эрхарт"
-            },
-            {
-                text: "Наша жизнь начинается заканчиваться в тот день, когда мы умолкаем о важных вещах.",
-                author: "Мартин Лютер Кинг"
-            },
-            {
-                text: "Если вы думаете, что вы слишком малы, чтобы что-то изменить, попробуйте спать с комаром.",
-                author: "Далай-лама"
-            },
-            {
-                text: "Самый большой риск — не рисковать вообще.",
-                author: "Марк Цукерберг"
-            },
-            {
-                text: "Будущее принадлежит тем, кто верит в красоту своей мечты.",
-                author: "Элеонора Рузвельт"
-            },
-            {
-                text: "Не оглядывайся назад — ты не туда идешь.",
-                author: "Марк Твен"
             }
         ];
         
-        this.currentQuoteIndex = 0;
-        this.currentQuote = this.quotes[this.currentQuoteIndex].text;
-        this.author = this.quotes[this.currentQuoteIndex].author;
+        this.currentQuoteIndex = config.initialIndex !== undefined ? 
+            config.initialIndex : 
+            Math.floor(Math.random() * this.quotes.length);
+            
+        this.updateCurrentQuote();
+    }
+
+    updateCurrentQuote() {
+        const quote = this.quotes[this.currentQuoteIndex];
+        this.currentQuote = quote.text;
+        this.author = quote.author;
     }
 
     renderContent() {
@@ -75,10 +65,12 @@ class QuoteWidget extends UIComponent {
 
     nextQuote() {
         this.currentQuoteIndex = (this.currentQuoteIndex + 1) % this.quotes.length;
-        const quote = this.quotes[this.currentQuoteIndex];
-        this.currentQuote = quote.text;
-        this.author = quote.author;
+        this.updateCurrentQuote();
         this.updateUI();
+        
+        if (typeof this.onStateChange === 'function') {
+            this.onStateChange();
+        }
     }
 
     updateUI() {
