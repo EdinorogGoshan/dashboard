@@ -1,4 +1,3 @@
-// Главный файл приложения
 class UIComponent {
     constructor(config = {}) {
         this.id = config.id || `widget-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -6,6 +5,7 @@ class UIComponent {
         this.type = config.type || 'base';
         this.isMinimized = false;
         this.element = null;
+        this.eventListeners = [];
     }
 
     render() {
@@ -42,8 +42,16 @@ class UIComponent {
         const minimizeBtn = this.element.querySelector('.minimize-btn');
         const closeBtn = this.element.querySelector('.close-btn');
         
-        minimizeBtn.addEventListener('click', () => this.toggleMinimize());
-        closeBtn.addEventListener('click', () => this.destroy());
+        const minimizeHandler = () => this.toggleMinimize();
+        const closeHandler = () => this.destroy();
+        
+        minimizeBtn.addEventListener('click', minimizeHandler);
+        closeBtn.addEventListener('click', closeHandler);
+        
+        this.eventListeners.push(
+            { element: minimizeBtn, type: 'click', handler: minimizeHandler },
+            { element: closeBtn, type: 'click', handler: closeHandler }
+        );
     }
 
     toggleMinimize() {
@@ -58,116 +66,19 @@ class UIComponent {
     }
 
     destroy() {
+        this.eventListeners.forEach(({ element, type, handler }) => {
+            if (element && element.removeEventListener) {
+                element.removeEventListener(type, handler);
+            }
+        });
+        
+        this.eventListeners = [];
+        
         if (this.element && this.element.parentNode) {
             this.element.parentNode.removeChild(this.element);
         }
+        
         this.element = null;
-    }
-}
-
-class ToDoWidget extends UIComponent {
-    constructor(config = {}) {
-        super({
-            ...config,
-            title: config.title || 'Список дел',
-            type: 'todo'
-        });
-        this.tasks = config.tasks || [];
-    }
-
-    renderContent() {
-        return `
-            <div class="todo-container">
-                <div class="todo-input">
-                    <input type="text" placeholder="Новая задача..." class="todo-input-field">
-                    <button class="add-todo-btn">Добавить</button>
-                </div>
-                <ul class="todo-list">
-                    ${this.tasks.map(task => `
-                        <li class="todo-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
-                            <input type="checkbox" ${task.completed ? 'checked' : ''} class="todo-checkbox">
-                            <span class="todo-text">${task.text}</span>
-                            <button class="delete-todo-btn">×</button>
-                        </li>
-                    `).join('')}
-                </ul>
-                <div class="todo-stats">
-                    Всего: ${this.tasks.length} | Выполнено: ${this.tasks.filter(t => t.completed).length}
-                </div>
-            </div>
-        `;
-    }
-
-    bindEvents() {
-        super.bindEvents();
-        
-        if (!this.element) return;
-        
-        const addBtn = this.element.querySelector('.add-todo-btn');
-        const inputField = this.element.querySelector('.todo-input-field');
-        const todoList = this.element.querySelector('.todo-list');
-        
-        addBtn.addEventListener('click', () => this.addTask());
-        inputField.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addTask();
-        });
-        
-        todoList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-todo-btn')) {
-                this.deleteTask(e.target.closest('.todo-item').dataset.id);
-            } else if (e.target.classList.contains('todo-checkbox')) {
-                this.toggleTask(e.target.closest('.todo-item').dataset.id);
-            }
-        });
-    }
-
-    addTask() {
-        const inputField = this.element.querySelector('.todo-input-field');
-        const text = inputField.value.trim();
-        
-        if (text) {
-            const newTask = {
-                id: Date.now().toString(),
-                text: text,
-                completed: false
-            };
-            
-            this.tasks.push(newTask);
-            this.updateUI();
-            inputField.value = '';
-        }
-    }
-
-    deleteTask(id) {
-        this.tasks = this.tasks.filter(task => task.id !== id);
-        this.updateUI();
-    }
-
-    toggleTask(id) {
-        const task = this.tasks.find(task => task.id === id);
-        if (task) {
-            task.completed = !task.completed;
-            this.updateUI();
-        }
-    }
-
-    updateUI() {
-        const todoList = this.element.querySelector('.todo-list');
-        const stats = this.element.querySelector('.todo-stats');
-        
-        if (todoList) {
-            todoList.innerHTML = this.tasks.map(task => `
-                <li class="todo-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} class="todo-checkbox">
-                    <span class="todo-text">${task.text}</span>
-                    <button class="delete-todo-btn">×</button>
-                </li>
-            `).join('');
-        }
-        
-        if (stats) {
-            stats.textContent = `Всего: ${this.tasks.length} | Выполнено: ${this.tasks.filter(t => t.completed).length}`;
-        }
     }
 }
 
@@ -178,8 +89,41 @@ class QuoteWidget extends UIComponent {
             title: config.title || 'Случайная цитата',
             type: 'quote'
         });
-        this.currentQuote = config.initialQuote || 'Нажмите "Обновить" для загрузки цитаты';
-        this.author = config.author || '';
+        
+        this.quotes = [
+            {
+                text: "Лучший способ начать делать — перестать говорить и начать делать.",
+                author: "Уолт Дисней"
+            },
+            {
+                text: "Успех — это идти от неудачи к неудаче, не теряя энтузиазма.",
+                author: "Уинстон Черчилль"
+            },
+            {
+                text: "Единственный способ делать великие дела — любить то, что вы делаете.",
+                author: "Стив Джобс"
+            },
+            {
+                text: "Не ждите. Время никогда не будет подходящим.",
+                author: "Наполеон Хилл"
+            },
+            {
+                text: "Сложнее всего начать действовать, все остальное зависит только от упорства.",
+                author: "Амелия Эрхарт"
+            }
+        ];
+        
+        this.currentQuoteIndex = config.initialIndex !== undefined ? 
+            config.initialIndex : 
+            Math.floor(Math.random() * this.quotes.length);
+            
+        this.updateCurrentQuote();
+    }
+
+    updateCurrentQuote() {
+        const quote = this.quotes[this.currentQuoteIndex];
+        this.currentQuote = quote.text;
+        this.author = quote.author;
     }
 
     renderContent() {
@@ -187,7 +131,7 @@ class QuoteWidget extends UIComponent {
             <div class="quote-container">
                 <div class="quote-text">"${this.currentQuote}"</div>
                 <div class="quote-author">— ${this.author}</div>
-                <button class="refresh-quote-btn">Обновить</button>
+                <button class="refresh-quote-btn">Следующая цитата</button>
             </div>
         `;
     }
@@ -198,40 +142,20 @@ class QuoteWidget extends UIComponent {
         if (!this.element) return;
         
         const refreshBtn = this.element.querySelector('.refresh-quote-btn');
-        refreshBtn.addEventListener('click', () => this.fetchQuote());
+        const refreshHandler = () => this.nextQuote();
         
-        // Автоматически загружаем цитату при создании
-        this.fetchQuote();
+        refreshBtn.addEventListener('click', refreshHandler);
+        this.eventListeners.push({
+            element: refreshBtn,
+            type: 'click', 
+            handler: refreshHandler
+        });
     }
 
-    async fetchQuote() {
-        try {
-            const refreshBtn = this.element.querySelector('.refresh-quote-btn');
-            if (refreshBtn) {
-                refreshBtn.textContent = 'Загрузка...';
-                refreshBtn.disabled = true;
-            }
-            
-            // Используем API для получения случайных цитат
-            const response = await fetch('https://api.quotable.io/random');
-            const data = await response.json();
-            
-            this.currentQuote = data.content;
-            this.author = data.author;
-            
-            this.updateUI();
-        } catch (error) {
-            console.error('Ошибка при загрузке цитаты:', error);
-            this.currentQuote = 'Не удалось загрузить цитату. Проверьте подключение к интернету.';
-            this.author = '';
-            this.updateUI();
-        } finally {
-            const refreshBtn = this.element.querySelector('.refresh-quote-btn');
-            if (refreshBtn) {
-                refreshBtn.textContent = 'Обновить';
-                refreshBtn.disabled = false;
-            }
-        }
+    nextQuote() {
+        this.currentQuoteIndex = (this.currentQuoteIndex + 1) % this.quotes.length;
+        this.updateCurrentQuote();
+        this.updateUI();
     }
 
     updateUI() {
@@ -242,7 +166,6 @@ class QuoteWidget extends UIComponent {
         if (quoteAuthor) quoteAuthor.textContent = `— ${this.author}`;
     }
 }
-
 class WeatherWidget extends UIComponent {
     constructor(config = {}) {
         super({
